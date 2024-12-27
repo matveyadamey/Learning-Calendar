@@ -1,25 +1,19 @@
 import datetime
+import pandas as pd
 
 class IntervalChecker:
-    def interval_repetition(self,notes_dict):
+
+    def __init__(self,notes_df):
+        self.notes_df=notes_df
+
+    def get_time_diff(self):
+        
         today = datetime.datetime.now()
         repetitions = []
-        for note, creation_date in notes_dict.items():
-            time_difference = today - datetime.datetime.fromtimestamp(creation_date)
-            
-            if time_difference == datetime.timedelta(minutes=20):
-                repetitions.append((note, creation_date))
-            elif time_difference == datetime.timedelta(hours=1):
-                repetitions.append((note, creation_date))
-            elif time_difference == datetime.timedelta(hours=8):
-                repetitions.append((note, creation_date))
-            elif time_difference == datetime.timedelta(days=1):
-                repetitions.append((note, creation_date))
-            elif time_difference == datetime.timedelta(weeks=1):
-                repetitions.append((note, creation_date))
-            elif time_difference == datetime.timedelta(weeks=2):
-                repetitions.append((note, creation_date))
-            elif time_difference <= datetime.timedelta(weeks=4):
-                repetitions.append((note, creation_date))
 
-        return repetitions
+        self.notes_df["time_diff"] = today - self.notes_df.creation_date
+        return self.notes_df
+
+    def get_notes_for_repetition(self):
+        return self.get_time_diff()
+        

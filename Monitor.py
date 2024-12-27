@@ -1,6 +1,6 @@
 import os
 import json
-import pandas as pd
+import datetime
 
 class Monitor:
 
@@ -20,19 +20,6 @@ class Monitor:
             for file in files:
                 if file.endswith('.md'):
                     self.creation_time = os.path.getctime(os.path.join(root, file))
-                    self.files_dict[file] = self.creation_time
+                    self.files_dict[file] = datetime.datetime.fromtimestamp(self.creation_time)
 
         return self.files_dict
-
-    def update_notes_table(self):
-        notes_dict = self.scan_directory()
-
-        if os.path.exists("notes_table.csv"):
-            notes_table=pd.read_csv("notes_table.csv",index_col=0)
-
-
-        else:
-            task_table=pd.DataFrame({"note":notes_dict.keys(),"creation_date":notes_dict.values(),"status":["not done"]*len(notes_dict)})
-            task_table.to_csv("notes_table.csv")
-mon=Monitor()
-mon.update_notes_table()

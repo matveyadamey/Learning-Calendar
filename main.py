@@ -1,10 +1,8 @@
-from Monitor import Monitor
+from NotesTableManager import NotesTableManager as ntm
 from IntervalChecker import IntervalChecker
 
-monitor = Monitor()
-result = monitor.scan_directory()
+tableManager=ntm()
+notes_table=tableManager.get_notes_table()
 
-int_check = IntervalChecker()
-repetitions = int_check.interval_repetition(result)
-
-print(repetitions)
+intervalChecker=IntervalChecker(notes_table)
+print(intervalChecker.get_notes_for_repetition())

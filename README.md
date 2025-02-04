@@ -5,6 +5,9 @@
 4) Change the obsidian path to yours
 5) Profit!
 
+# How to run
+python main.py
+
 # Commands
 1) /get_notes_for repeat (notes count) - print a few notes for repeat. If you haven't specified count, default is 10 and you can change it in config
 2) /lets_repeat note_name - print content of note and increase repeates count

@@ -2,10 +2,12 @@ import telebot
 from ConfigManager import ConfigManager as cm
 from IntervalChecker import IntervalChecker as ic
 from NotesTableManager import NotesTableManager as ntm
+from NoteManager import NoteManager as note_manager
 
 jcm = cm()
 jntm = ntm()
 jic = ic()
+note_man = note_manager()
 
 default_notes_count = jcm.get_json_value("default_notes_count")
 TOKEN = jcm.get_json_value("tgbot_token")
@@ -42,37 +44,41 @@ def send_notes_for_repeat(message):
                          text="\n".join(notes[:default_notes_count]))
 
 
+def send_note_with_images(chat_id, image_paths, note_content):
+    media_group = []
+    image_data_list = []
+
+    for i, path in enumerate(image_paths):
+        with open(path, 'rb') as image_file:
+            image_data = image_file.read()
+            image_data_list.append(image_data)
+
+        if i == 0:
+            photo = telebot.types.InputMediaPhoto(image_data_list[-1],
+                                                  caption=note_content)
+            media_group.append(photo)
+        else:
+            photo = telebot.types.InputMediaPhoto(image_data_list[-1])
+            media_group.append(photo)
+
+    bot.send_media_group(chat_id, media_group)
+
+
 @bot.message_handler(commands=["lets_repeat"])
 def repeat_note(message):
     note_name = " ".join(message.text.split(' ')[1:])
-    note_content = jntm.read_note(note_name)
+    note_content = note_man.read_note(note_name)
 
     if note_content:
-        image_paths = jntm.get_images_from_note(note_content)
-
-        media_group = []
-        image_data_list = []
+        image_paths, note_content = note_man.get_images_from_note(note_content)
 
         if len(image_paths) > 0:
-            for i, path in enumerate(image_paths):
-                with open(path, 'rb') as image_file:
-                    image_data = image_file.read()
-                    image_data_list.append(image_data)
-
-                if i == 0:
-                    photo = telebot.types.InputMediaPhoto(image_data_list[-1],
-                                                          caption=note_content)
-                    media_group.append(photo)
-                else:
-                    photo = telebot.types.InputMediaPhoto(image_data_list[-1])
-                    media_group.append(photo)
-
-            bot.send_media_group(message.chat.id, media_group)
+            send_note_with_images(message.chat.id, image_paths, note_content)
 
         else:
             bot.send_message(message.chat.id, note_content)
 
-        jntm.increaseRepsCount(note_name)
+        note_man.increaseRepsCount(note_name)
         bot.send_message(message.chat.id, '+1 rep')
 
     else:
@@ -83,11 +89,10 @@ def repeat_note(message):
 def getRepsCount(message):
     if len(message.text.split(' ')) > 1:
         note_name = " ".join(message.text.split(' ')[1:])
-        note = jntm.get_note(note_name)
+        note = note_man.get_note(note_name)
 
         if note is not None and not note.empty:
-            reps_count = jntm.get_reps_count(note_name)
-            print(reps_count)
+            reps_count = note_man.get_reps_count(note_name)
             reps_msg = f"You have repeated {note_name} for {reps_count} times"
             bot.send_message(message.chat.id, reps_msg)
         else:

@@ -2,7 +2,6 @@ import os
 import pandas as pd
 from Monitor import Monitor
 from ConfigManager import ConfigManager as cm
-import re
 
 
 class NotesTableManager:
@@ -27,11 +26,11 @@ class NotesTableManager:
         self.form_notes_table(self.notes_dict.keys(),
                               self.notes_dict.values(),
                               [0] * len(self.notes_dict))
-        self.save_notes_table()
+        self.save_notes_table(self.notes_table)
         return self.notes_table
 
-    def save_notes_table(self):
-        self.notes_table.to_csv(self.notes_table_path)
+    def save_notes_table(self, notes_table):
+        notes_table.to_csv(self.notes_table_path)
 
     def get_notes_table(self):
         if os.path.exists(self.notes_table_path):
@@ -47,6 +46,7 @@ class NotesTableManager:
         reps_counts = []
 
         notes_table = self.get_notes_table()
+
         for note_name in self.notes_dict.keys():
             row = notes_table[notes_table.note == note_name]
 
@@ -59,72 +59,4 @@ class NotesTableManager:
                 creation_dates.append(self.notes_dict[note_name])
                 reps_counts.append(0)
         self.form_notes_table(notes, creation_dates, reps_counts)
-        self.save_notes_table()
-
-    def read_note(self, note_path):
-        path = self.obsidian_path + '/' + note_path + '.md'
-
-        if os.path.exists(path):
-            with open(path, 'r', encoding='UTF-8') as note:
-                note_content = note.read()
-                print(type(note_content))
-                return note_content
-        else:
-            return False
-
-    def get_note(self, note_name):
-        self.notes_table = pd.DataFrame(self.get_notes_table())
-        cleaned_note_name = (note_name + '.md').replace("\\\\", "\\")
-
-        note = self.notes_table[self.notes_table.note == cleaned_note_name]
-
-        if not note.empty:
-            return note
-        else:
-            print(f"Заметка {cleaned_note_name} не найдена.")
-            return None
-
-    def increaseRepsCount(self, note_name):
-        note = self.get_note(note_name)
-        if note is not None:
-            self.notes_table.loc[self.notes_table.note ==
-                                 note_name + '.md', 'reps'] += 1
-            self.save_notes_table()
-        else:
-            print(f"Не могу увеличить reps для \
-                  {note_name}, так как заметка не найдена.")
-
-    def get_reps_count(self, note_name):
-        note = self.get_note(note_name)
-        if note is not None and not note.empty:
-            return note.reps.values[0]
-        else:
-            print(f"Заметка {note_name} не найдена.")
-            return 0
-
-    def get_image_pathes_by_name(self, image_names):
-        import os
-        image_pathes = []
-        for name in image_names:
-            path = self.image_folder + "/" + name
-            if os.path.exists(path):
-                image_pathes.append(path)
-            else:
-                edited_path = self.image_folder + "/" + "Pasted image " + name
-                if os.path.exists(edited_path):
-                    image_pathes.append(edited_path)
-                else:
-                    print("sorry не нашел картинку")
-                print(edited_path)
-
-        return image_pathes
-
-    def get_images_from_note(self, note_content):
-        # заменять ссылки на картинки на "фото n"
-        image_links = []
-        for word in re.split(r'(\s+)', note_content):
-            if word.endswith(".png]]") or word.endswith(".jpg]]"):
-                image_links.append(word.replace("]]", ""))
-
-        print("images", image_links)
-        return self.get_image_pathes_by_name(image_links)
+        self.save_notes_table(self.notes_table)

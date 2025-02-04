@@ -3,6 +3,7 @@ import pandas as pd
 from NotesTableManager import NotesTableManager as ntm
 from ConfigManager import ConfigManager as cm
 
+
 class IntervalChecker:
 
     def __init__(self):
@@ -10,7 +11,6 @@ class IntervalChecker:
         jcm = cm()
         self.notes_df = tableManager.get_notes_table()
         self.default_notes_count = jcm.get_json_value("default_notes_count")
-        self.error_message = jcm.get_json_value("error_message")
 
     def get_time_diff(self):
         today = datetime.datetime.now()
@@ -18,7 +18,7 @@ class IntervalChecker:
         self.notes_df["time_diff"] = today - creation_date
         return self.notes_df
 
-    def get_notes_for_repeat(self,message_text):
+    def get_notes_for_repeat(self, message_text):
         days_for_repeats = [1, 3, 10, 30, 60, 180, 365]
         notes_df = self.get_time_diff()
         notes_df["should_repeat"] = \

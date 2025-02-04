@@ -1,7 +1,7 @@
 # How to install
 1) Download the archieve. 
 2) Run pip install -r requirements.txt
-3) Make new telegram bot with BotFtarher and paste the token to config file
+3) Make new telegram bot with BotFather (@BotFather) and paste the token to config file
 4) Change the obsidian path to yours
 5) Profit!
 

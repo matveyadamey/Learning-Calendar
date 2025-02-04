@@ -48,9 +48,33 @@ def repeat_note(message):
     note_content = jntm.read_note(note_name)
 
     if note_content:
-        bot.send_message(message.chat.id, note_content)
+        image_paths = jntm.get_images_from_note(note_content)
+
+        media_group = []
+        image_data_list = []
+
+        if len(image_paths) > 0:
+            for i, path in enumerate(image_paths):
+                with open(path, 'rb') as image_file:
+                    image_data = image_file.read()
+                    image_data_list.append(image_data)
+
+                if i == 0:
+                    photo = telebot.types.InputMediaPhoto(image_data_list[-1],
+                                                          caption=note_content)
+                    media_group.append(photo)
+                else:
+                    photo = telebot.types.InputMediaPhoto(image_data_list[-1])
+                    media_group.append(photo)
+
+            bot.send_media_group(message.chat.id, media_group)
+
+        else:
+            bot.send_message(message.chat.id, note_content)
+
         jntm.increaseRepsCount(note_name)
         bot.send_message(message.chat.id, '+1 rep')
+
     else:
         bot.send_message(message.chat.id, error_message)
 

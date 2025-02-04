@@ -2,6 +2,7 @@ import os
 import pandas as pd
 from Monitor import Monitor
 from ConfigManager import ConfigManager as cm
+import re
 
 
 class NotesTableManager:
@@ -11,6 +12,7 @@ class NotesTableManager:
         self.notes_dict = self.monitor.scan_directory()
         self.notes_table_path = "notes_table.csv"
         self.obsidian_path = jcm.get_json_value("obsidian_path")
+        self.image_folder = jcm.get_json_value("image_folder")
 
     def form_notes_table(self, notes, creation_dates, reps_counts):
         creation_date = pd.to_datetime(pd.Series(creation_dates),
@@ -65,6 +67,7 @@ class NotesTableManager:
         if os.path.exists(path):
             with open(path, 'r', encoding='UTF-8') as note:
                 note_content = note.read()
+                print(type(note_content))
                 return note_content
         else:
             return False
@@ -98,3 +101,30 @@ class NotesTableManager:
         else:
             print(f"Заметка {note_name} не найдена.")
             return 0
+
+    def get_image_pathes_by_name(self, image_names):
+        import os
+        image_pathes = []
+        for name in image_names:
+            path = self.image_folder + "/" + name
+            if os.path.exists(path):
+                image_pathes.append(path)
+            else:
+                edited_path = self.image_folder + "/" + "Pasted image " + name
+                if os.path.exists(edited_path):
+                    image_pathes.append(edited_path)
+                else:
+                    print("sorry не нашел картинку")
+                print(edited_path)
+
+        return image_pathes
+
+    def get_images_from_note(self, note_content):
+        # заменять ссылки на картинки на "фото n"
+        image_links = []
+        for word in re.split(r'(\s+)', note_content):
+            if word.endswith(".png]]") or word.endswith(".jpg]]"):
+                image_links.append(word.replace("]]", ""))
+
+        print("images", image_links)
+        return self.get_image_pathes_by_name(image_links)

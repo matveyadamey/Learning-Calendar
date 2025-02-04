@@ -5,58 +5,102 @@ from ConfigManager import ConfigManager as cm
 
 
 class NotesTableManager:
+    notes_table = pd.DataFrame()
+
     def __init__(self):
+        """
+        Инициализирует класс NotesTableManager.
+
+        Загружает путь к таблице заметок и
+        сканирует директорию для получения списка заметок.
+        """
         self.monitor = Monitor()
-        jcm = cm()
+        config_manager = cm()
         self.notes_dict = self.monitor.scan_directory()
         self.notes_table_path = "notes_table.csv"
-        self.obsidian_path = jcm.get_json_value("obsidian_path")
-        self.image_folder = jcm.get_json_value("image_folder")
+        self.obsidian_path = config_manager.get_json_value("obsidian_path")
+        self.image_folder = config_manager.get_json_value("image_folder")
+    
+    def save_notes_table(self):
+        """
+        Сохраняет таблицу заметок в CSV-файл.
 
-    def form_notes_table(self, notes, creation_dates, reps_counts):
-        creation_date = pd.to_datetime(pd.Series(creation_dates),
-                                       format='%Y-%m-%d %H:%M:%S.%f')
-        notes_table = pd.DataFrame({"note": notes,
-                                    "creation_date": creation_date,
-                                    "reps": reps_counts})
-        self.notes_table = notes_table
-        return notes_table
+        :param notes_table: DataFrame с данными заметок
+        """
+        NotesTableManager.notes_table.to_csv(self.notes_table_path, index=True)
 
     def create_notes_table(self):
-        self.form_notes_table(self.notes_dict.keys(),
-                              self.notes_dict.values(),
-                              [0] * len(self.notes_dict))
-        self.save_notes_table(self.notes_table)
-        return self.notes_table
+        """
+        Создаёт новую таблицу заметок на основе данных из self.notes_dict.
 
-    def save_notes_table(self, notes_table):
-        notes_table.to_csv(self.notes_table_path)
+        :return: DataFrame с данными заметок
+        """
+        notes = list(self.notes_dict.keys())
+        creation_dates = pd.to_datetime(list(self.notes_dict.values()),
+                                        format='%Y-%m-%d %H:%M:%S.%f')
+        reps_counts = [0] * len(notes)
 
-    def get_notes_table(self):
+        notes_table = pd.DataFrame({
+            "note": notes,
+            "creation_date": creation_dates,
+            "reps": reps_counts
+        })
+        NotesTableManager.notes_table = notes_table
+        self.save_notes_table()
+        return notes_table
+    
+
+    def create_or_load_notes_table(self):
+        """
+        Создаёт или загружает таблицу заметок.
+
+        Если файл таблицы существует, загружает его.
+        В противном случае создаёт новую таблицу.
+
+        :return: DataFrame с данными заметок
+        """
         if os.path.exists(self.notes_table_path):
-            notes_table = pd.read_csv(self.notes_table_path, index_col=0)
-            return notes_table
+            return pd.read_csv(self.notes_table_path, index_col=0)
         else:
             print("Создаю таблицу...")
             return self.create_notes_table()
 
     def update_notes_table(self):
-        notes = []
-        creation_dates = []
-        reps_counts = []
+        """
+        Обновляет таблицу заметок,
+        добавляя новые заметки и обновляя существующие.
 
-        notes_table = self.get_notes_table()
+        :return: Обновлённый DataFrame с данными заметок
+        """
+        existing_table = self.create_or_load_notes_table()
 
-        for note_name in self.notes_dict.keys():
-            row = notes_table[notes_table.note == note_name]
+        new_notes = list(self.notes_dict.keys())
+        new_creation_dates = pd.to_datetime(list(self.notes_dict.values()),
+                                            format='%Y-%m-%d %H:%M:%S.%f')
+        new_reps_counts = [0] * len(new_notes)
 
-            if row.shape[0] != 0:
-                notes.append(row.note.values[0])
-                creation_dates.append(row.creation_date.values[0])
-                reps_counts.append(row.reps.values[0])
-            else:
-                notes.append(note_name)
-                creation_dates.append(self.notes_dict[note_name])
-                reps_counts.append(0)
-        self.form_notes_table(notes, creation_dates, reps_counts)
-        self.save_notes_table(self.notes_table)
+        new_table = pd.DataFrame({
+            "note": new_notes,
+            "creation_date": new_creation_dates,
+            "reps": new_reps_counts
+        })
+
+        updated_table = pd.concat([existing_table, new_table]).\
+            drop_duplicates(subset="note", keep="first")
+
+        NotesTableManager.notes_table = updated_table
+
+        self.save_notes_table()
+
+        return updated_table
+
+    def get_notes_table(self):
+        """
+        Получает таблицу заметок.
+
+        Если файл таблицы существует, загружает его.
+        В противном случае создаёт новую таблицу.
+
+        :return: DataFrame с данными заметок
+        """
+        return self.create_or_load_notes_table()

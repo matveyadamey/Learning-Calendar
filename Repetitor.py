@@ -1,54 +1,43 @@
 from NoteManager import NoteManager as note_manager
 from NotesTableManager import NotesTableManager as ntm
 from ConfigManager import ConfigManager as cm
+import pandas as pd
 
 
 class Repetitor:
     def __init__(self):
         self.note_man = note_manager()
         self.jntm = ntm()
-        self.jcm = cm()
-        self.error_message = self.jcm.get_json_value("error_message")
-
-    def increaseRepsCount(self, note_name):
-        note = self.note_man.get_note(note_name)
-        self.notes_table = self.jntm.get_notes_table()
-        print("Увеличиваю количество повторений...")
-        if note is not None:
-            self.notes_table.loc[self.notes_table.note ==
-                                 note_name + '.md', "reps"] += 1
-            self.jntm.save_notes_table(self.notes_table)
-        else:
-            print(f"Не могу увеличить reps для \
-                  {note_name}, так как заметка не найдена.")
 
     def get_reps_count(self, note_name):
-        note = self.note_man.get_note(note_name)
-        if note is not None and not note.empty:
-            print("Возвращаю количество повторений...")
-            return note.reps.values[0]
-        else:
-            raise "Note not found"
+        print("Возвращаю количество повторений...")
+        return self.note_man.get_note_property(note_name, "reps")
+
+
+    def increaseRepsCount(self, note_name):
+
+        print("Увеличиваю количество повторений...")
+
+        self.note_man.edit_note_property(note_name=note_name, property_name="reps", new_value=self.get_reps_count(note_name) + 1)
+
 
     def handle_repeat_note(self, note_name):
         note_content = self.note_man.read_note(note_name)
 
-        if note_content:
-            image_paths, note_content = \
-                self.note_man.get_images_from_note(note_content)
+        image_paths, note_content = \
+            self.note_man.get_images_from_note(note_content)
 
-            self.increaseRepsCount(note_name)
+        self.increaseRepsCount(note_name)
 
-            if len(image_paths) > 0:
-                media_group = \
-                    self.note_man.get_note_with_images(image_paths,
-                                                       note_content)
-                return media_group
+        print("Формирую сообщение...")
 
-            else:
-                return note_content
+        if len(image_paths) > 0:
+            media_group = \
+                self.note_man.get_note_with_images(image_paths, note_content)
+            return media_group
+
         else:
-            return self.error_message
+            return note_content
 
     def handle_get_reps_count(self, message_text):
         if len(message_text.split(' ')) > 1:

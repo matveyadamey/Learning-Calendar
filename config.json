@@ -1,7 +1,5 @@
 {"obsidian_path": "C:/Users/matve/Documents/Obsidian Vault\\",
  "tgbot_token":"7811582934:AAG1-dulEBcRXry6r5RAXmSKDv-Fa6LBb20",
  "default_notes_count":10,
- "image_folder": "C:/Users/matve/Documents/Obsidian Vault/_resources",
- "start_message" : "Привет! Я ваш помощник в учебе, буду подсказывать когда и что надо повторить для лучшего усвоения материала",
- "error_message" : "Извиняюсь, я не очень понял, что вы хотите. Попробуйте еще раз с немного другой командой"
+ "image_folder": "C:/Users/matve/Documents/Obsidian Vault/_resources"
 }

@@ -2,40 +2,44 @@ import datetime
 import pandas as pd
 from NotesTableManager import NotesTableManager as ntm
 from ConfigManager import ConfigManager as cm
+from Messages import Messages
 
 
 class IntervalChecker:
-
     def __init__(self):
-        tableManager = ntm()
-        jcm = cm()
-        self.notes_df = tableManager.get_notes_table()
-        self.default_notes_count = jcm.get_json_value("default_notes_count")
+        self.table_manager = ntm()
+        self.config_manager = cm()
+        self.notes_df = self.table_manager.get_notes_table()
+        self.default_notes_count = \
+            self.config_manager.get_json_value("default_notes_count")
 
-    def get_time_diff(self):
+    def calculate_time_diff(self):
         today = datetime.datetime.now()
         creation_date = pd.to_datetime(self.notes_df.creation_date)
-        self.notes_df["time_diff"] = today - creation_date
+        self.notes_df["time_diff"] = (today - creation_date).dt.days
         return self.notes_df
 
-    def get_notes_for_repeat(self, message_text):
-        days_for_repeats = [1, 3, 10, 30, 60, 180, 365]
-        notes_df = self.get_time_diff()
-        notes_df["should_repeat"] = \
-            notes_df.time_diff.apply(lambda x: x.days in days_for_repeats)
+    def filter_notes_for_repetition(self):
+        days_for_repeats = Messages.days_for_repeats
+        notes_df = self.calculate_time_diff()
 
-        notes_for_repeat = \
-            notes_df[(notes_df.reps == 0) | (notes_df.should_repeat)].note
+        notes_df["should_repeat"] = notes_df.time_diff.isin(days_for_repeats)
 
-        notes_for_repeat = notes_for_repeat.apply(lambda x: str(x)[:-3]).values
+        notes_for_repetition = notes_df[
+            (notes_df.reps == 0) | (notes_df.should_repeat)
+        ].note.apply(lambda x: x.replace(".md", "")).tolist()
 
-        if len(message_text.split(' ')) > 1:
-            user_notes_count = int(message_text.split(' ')[1])
+        return notes_for_repetition
 
-            if user_notes_count > len(notes_for_repeat) - 1:
-                user_notes_count = len(notes_for_repeat) - 1
+    def handle_get_notes_for_repeat(self, message_text):
+        notes_for_repetition = self.filter_notes_for_repetition()
 
-            return "\n".join(notes_for_repeat[:user_notes_count])
-
+        if len(message_text.split()) > 1:
+            user_notes_count = int(message_text.split()[1])
+            if user_notes_count > len(notes_for_repetition):
+                user_notes_count = len(notes_for_repetition)
         else:
-            return "\n".join(notes_for_repeat[:self.default_notes_count])
+
+            user_notes_count = self.default_notes_count
+
+        return "\n".join(notes_for_repetition[:user_notes_count])

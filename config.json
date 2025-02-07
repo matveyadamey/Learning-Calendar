@@ -1,5 +1,8 @@
-{"obsidian_path": "C:/Users/matve/Documents/Obsidian Vault\\",
- "tgbot_token":"7811582934:AAG1-dulEBcRXry6r5RAXmSKDv-Fa6LBb20",
- "default_notes_count":10,
- "image_folder": "C:/Users/matve/Documents/Obsidian Vault/_resources"
+{
+    "obsidian_path": "C:/Users/matve/Documents/Obsidian Vault\\",
+    "tgbot_token": "7811582934:AAG1-dulEBcRXry6r5RAXmSKDv-Fa6LBb20",
+    "default_notes_count": 10,
+    "image_folder": "C:/Users/matve/Documents/Obsidian Vault/_resources",
+    "yandex_folder_id": "b1gug7c74crq38i2spt2",
+    "yandex_api_key": "AQVN2VdnEpiYARjmZXK4bO4GYyeeIdPqcNba3pGY"
 }

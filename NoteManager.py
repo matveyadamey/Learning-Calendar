@@ -3,7 +3,7 @@ from ConfigManager import ConfigManager as cm
 from NotesTableManager import NotesTableManager as ntm
 import re
 import telebot
-
+from pathlib import Path
 
 class NoteManager:
     def __init__(self):
@@ -12,8 +12,32 @@ class NoteManager:
         self.image_folder = self.jcm.get_json_value("image_folder")
         self.jntm = ntm()
 
+    def flip_slashes(self, path):
+        """
+        Меняет направление всех слешей в пути:
+        - Прямые слеши (/) заменяются на обратные (\)
+        - Обратные слеши (\) заменяются на прямые (/)
+        
+        :param path: Исходный путь до файла
+        :return: Путь с измененными слешами
+        """
+        if "\\" in path:
+            # Если есть обратные слеши, заменяем их на прямые
+            return path.replace("\\", "/")
+        elif "/" in path:
+            # Если есть прямые слеши, заменяем их на обратные
+            return path.replace("/", "\\")
+        else:
+            # Если слеши отсутствуют, возвращаем исходный путь
+            return path
+
     def read_note(self, note_path):
         path = os.path.join(self.obsidian_path, note_path + '.md')
+        p = Path(path)
+        # Возвращаем абсолютный нормализованный путь
+        path = self.flip_slashes(str(p.resolve()))
+
+        print(path)
 
         if os.path.exists(path):
             with open(path, 'r', encoding='UTF-8') as note:

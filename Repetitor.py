@@ -1,7 +1,5 @@
 from NoteManager import NoteManager as note_manager
 from NotesTableManager import NotesTableManager as ntm
-from ConfigManager import ConfigManager as cm
-import pandas as pd
 
 
 class Repetitor:
@@ -15,9 +13,7 @@ class Repetitor:
 
 
     def increaseRepsCount(self, note_name):
-
         print("Увеличиваю количество повторений...")
-
         self.note_man.edit_note_property(note_name=note_name, property_name="reps", new_value=self.get_reps_count(note_name) + 1)
 
 

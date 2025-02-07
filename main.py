@@ -36,12 +36,13 @@ CHAT_ID = None
 # Создание главного меню с кнопками
 def create_main_menu():
     markup = types.InlineKeyboardMarkup(row_width=2)
+    btn0 = types.InlineKeyboardButton("Вывести список заметок для повторения", callback_data="get_notes_for_repeat")
     btn1 = types.InlineKeyboardButton("Повторить материал", callback_data="lets_repeat")
     btn2 = types.InlineKeyboardButton("Получить вопросы", callback_data="ask_me")
     btn3 = types.InlineKeyboardButton("Посмотреть статистику повторений", callback_data="get_reps")
     btn4 = types.InlineKeyboardButton("Настроить путь к Obsidian", callback_data="set_obsidian_path")
     btn5 = types.InlineKeyboardButton("Настроить путь к изображениям", callback_data="set_image_folder")
-    markup.add(btn1, btn2, btn3, btn4, btn5)
+    markup.add(btn0, btn1, btn2, btn3, btn4, btn5)
     return markup
 
 # Обработчик нажатий на кнопки
@@ -60,6 +61,17 @@ def callback_handler(call):
     elif call.data == "set_image_folder":
         bot.send_message(call.message.chat.id, "Введите путь к папке с изображениями:")
         bot.register_next_step_handler(call.message, set_image_folder)
+    elif call.data == "get_notes_for_repeat":
+        get_notes_for_repeat(call.message)
+
+
+@bot.message_handler(func=lambda message: True, commands=['get_notes_for_repeat'])
+def get_notes_for_repeat(message):
+    try:
+        notes = jic.handle_get_notes_for_repeat()
+        bot.send_message(message.chat.id, notes)
+    except Exception as e:
+        bot.send_message(message.chat.id, f"Произошла ошибка: {str(e)}")
 
 # Обработчик установки пути к Obsidian
 def set_obsidian_path(message):
@@ -115,7 +127,7 @@ def send_welcome(message):
     global CHAT_ID
     CHAT_ID = message.chat.id
     bot.reply_to(message, Messages.start_message, reply_markup=create_main_menu())
-    schedule.every(1).minutes.do(send_scheduled_message)
+    schedule.every(24*60).minutes.do(send_scheduled_message)
 
 # Обработчик повторения заметки
 def handle_lets_repeat(message):

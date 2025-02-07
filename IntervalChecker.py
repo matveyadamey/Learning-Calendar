@@ -33,13 +33,12 @@ class IntervalChecker:
 
     def handle_get_notes_for_repeat(self, message_text):
         notes_for_repetition = self.filter_notes_for_repetition()
+        
+        user_notes_count = int(message_text.split(" ")[0])
 
-        if len(message_text.split()) > 1:
-            user_notes_count = int(message_text.split()[1])
-            if user_notes_count > len(notes_for_repetition):
-                user_notes_count = len(notes_for_repetition)
-        else:
-
-            user_notes_count = self.default_notes_count
+        if user_notes_count > len(notes_for_repetition):
+                    user_notes_count = len(notes_for_repetition)
+        if user_notes_count > 100:
+                    user_notes_count = self.default_notes_count
 
         return "\n".join(notes_for_repetition[:user_notes_count])

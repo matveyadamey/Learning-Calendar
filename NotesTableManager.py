@@ -2,7 +2,7 @@ import os
 import pandas as pd
 from Monitor import Monitor
 from ConfigManager import ConfigManager as cm
-
+from Messages import Messages
 
 class NotesTableManager:
     notes_table = pd.DataFrame()
@@ -29,25 +29,46 @@ class NotesTableManager:
         """
         NotesTableManager.notes_table.to_csv(self.notes_table_path, index=True)
 
-    def create_notes_table(self):
+    def create_notes_table(self, focus_topic = 0):
         """
         Создаёт новую таблицу заметок на основе данных из self.notes_dict.
 
         :return: DataFrame с данными заметок
         """
-        notes = list(self.notes_dict.keys())
-        creation_dates = pd.to_datetime(list(self.notes_dict.values()),
-                                        format='%Y-%m-%d %H:%M:%S.%f')
-        reps_counts = [0] * len(notes)
+        if focus_topic == 0:
+            notes = list(self.notes_dict.keys())
+            creation_dates = pd.to_datetime(list(self.notes_dict.values()),
+                                            format='%Y-%m-%d %H:%M:%S.%f')
+            reps_counts = [0] * len(notes)
 
-        notes_table = pd.DataFrame({
-            "note": notes,
-            "creation_date": creation_dates,
-            "reps": reps_counts
-        })
-        NotesTableManager.notes_table = notes_table
-        self.save_notes_table()
-        return notes_table
+            notes_table = pd.DataFrame({
+                "note": notes,
+                "creation_date": creation_dates,
+                "reps": reps_counts
+            })
+            NotesTableManager.notes_table = notes_table
+            self.save_notes_table()
+            return notes_table
+        else:
+            notes = list(self.notes_dict.keys())
+            creation_dates = pd.to_datetime(list(self.notes_dict.values()),
+                                            format='%Y-%m-%d %H:%M:%S.%f')
+            reps_counts = [0] * len(notes)
+
+            notes_table = pd.DataFrame({
+                "note": notes,
+                "creation_date": creation_dates,
+                "reps": reps_counts
+            })
+
+            notes_table = notes_table[notes_table.note.apply(lambda x: focus_topic in x)]
+
+
+
+            NotesTableManager.notes_table = notes_table
+            self.save_notes_table()
+            return notes_table
+            
     
 
     def create_or_load_notes_table(self):
@@ -104,3 +125,12 @@ class NotesTableManager:
         :return: DataFrame с данными заметок
         """
         return self.create_or_load_notes_table()
+    
+    def handle_enter_focus_mode(self, message_text):
+        topic_name = " ".join(message_text.split(' ')[1:])
+        self.create_notes_table(topic_name)
+        return topic_name
+    
+    def handle_exit_focus_mode(self):
+        self.notes_dict = self.monitor.scan_directory()
+        self.create_notes_table()

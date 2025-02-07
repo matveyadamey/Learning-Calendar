@@ -41,7 +41,10 @@ def create_main_menu():
     btn3 = types.InlineKeyboardButton("Посмотреть статистику повторений", callback_data="get_reps")
     btn4 = types.InlineKeyboardButton("Настроить путь к Obsidian", callback_data="set_obsidian_path")
     btn5 = types.InlineKeyboardButton("Настроить путь к изображениям", callback_data="set_image_folder")
-    markup.add(btn1, btn2, btn3, btn4, btn5)
+    btn6 = types.InlineKeyboardButton("Войти в режим фокуса", callback_data="enter_focus_mode")
+    btn7 = types.InlineKeyboardButton("Выйти из режима фокуса", callback_data="exit_focus_mode")
+    btn8 = types.InlineKeyboardButton("Вывести заметки для повторения", callback_data="get_notes_for_repeat")
+    markup.add(btn1, btn2, btn3, btn4, btn5, btn6, btn7, btn8)
     return markup
 
 # Обработчик нажатий на кнопки
@@ -60,6 +63,14 @@ def callback_handler(call):
     elif call.data == "set_image_folder":
         bot.send_message(call.message.chat.id, "Введите путь к папке с изображениями:")
         bot.register_next_step_handler(call.message, set_image_folder)
+    elif call.data == "enter_focus_mode":
+        bot.send_message(call.message.chat.id, "Введите название темы, на которой хотите сфокусироваться:")
+        bot.register_next_step_handler(call.message, enter_focus_mode)
+    elif call.data == "exit_focus_mode":
+        exit_focus_mode(call.message)
+    elif call.data == "get_notes_for_repeat":
+        bot.send_message(call.message.chat.id, "Введите количество заметок, которые хотите получить (необязательно)")
+        bot.register_next_step_handler(call.message, get_notes_for_repeat)
 
 # Обработчик установки пути к Obsidian
 def set_obsidian_path(message):
@@ -117,8 +128,19 @@ def send_welcome(message):
     bot.reply_to(message, Messages.start_message, reply_markup=create_main_menu())
     schedule.every(1).minutes.do(send_scheduled_message)
 
+@bot.message_handler(func=lambda message: True, commands=["get_notes_for_repeat"])
+def get_notes_for_repeat(message):
+    bot.send_message(message.chat.id, "Sending notes...")
+    try:
+        notes = jic.handle_get_notes_for_repeat(message.text)
+        bot.send_message(message.chat.id, notes)
+    except Exception as e:
+        logging.error(f"Error getting notes for repeat: {e}")
+        bot.send_message(message.chat.id, f"An error occurred: {str(e)}")
+
 # Обработчик повторения заметки
 def handle_lets_repeat(message):
+    print("повторяю заметку")
     try:
         bot.send_message(message.chat.id, "Looking for note...")
         note_name = message.text
@@ -153,6 +175,24 @@ def get_reps_count(message):
         bot.send_message(message.chat.id, reps_count)
     except Exception as e:
         logging.error(f"Error getting reps count: {e}")
+        bot.send_message(message.chat.id, f"An error occurred: {str(e)}")
+
+@bot.message_handler(func=lambda message: True, commands=['enter_focus_mode'])
+def enter_focus_mode(message):
+    try:
+        focus_mode_topic = jntm.handle_enter_focus_mode(message.text)
+        bot.send_message(message.chat.id, f"Focus on {focus_mode_topic}")
+    except Exception as e:
+        logging.error(f"Error entering focus mode: {e}")
+        bot.send_message(message.chat.id, f"An error occurred: {str(e)}")
+
+@bot.message_handler(func=lambda message: True, commands=['exit_focus_mode'])
+def exit_focus_mode(message):
+    try:
+        jntm.handle_exit_focus_mode()
+        bot.send_message(message.chat.id, f"Focus mode closed")
+    except Exception as e:
+        logging.error(f"Error closing focus mode: {e}")
         bot.send_message(message.chat.id, f"An error occurred: {str(e)}")
 
 if __name__ == "__main__":

@@ -5,6 +5,7 @@ from NotesTableManager import NotesTableManager as ntm
 from NoteManager import NoteManager as note_manager
 from Repetitor import Repetitor as repetitor
 from Messages import Messages
+from YandexGenerateQuestions import YandexQuestionGenerator
 import pandas as pd
 
 jcm = cm()
@@ -47,6 +48,28 @@ def repeat_note(message):
             bot.send_message(message.chat.id, note_content)
 
         bot.send_message(message.chat.id, '+1 rep')
+
+        with open("last_opened_note.txt", "w") as f:  # "w" - режим записи (write)
+            f.write(str(note_name))  # Преобразуем в строку, если нужно
+
+
+    except Exception as e:
+        bot.send_message(message.chat.id, f"Произошла ошибка: {str(e)}")
+
+
+@bot.message_handler(commands=["ask_me"])
+def show_questions(message):
+    try:
+        bot.send_message(message.chat.id, "Generate questions...")
+
+        with open("last_opened_note.txt", "r") as f:  # "r" - режим чтения (read)
+            note_name = f.read()
+
+        note_content = rep.handle_repeat_note(note_name)
+
+        yq = YandexQuestionGenerator()
+
+        bot.send_message(message.chat.id, yq.generate_questions(note_content))
 
     except Exception as e:
         bot.send_message(message.chat.id, f"Произошла ошибка: {str(e)}")

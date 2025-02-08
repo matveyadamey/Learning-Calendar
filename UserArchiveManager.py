@@ -1,6 +1,7 @@
 import json
 import os
 from pathlib import Path
+import logging
 
 class UserArchiveManager:
     def __init__(self):
@@ -17,16 +18,25 @@ class UserArchiveManager:
         except json.JSONDecodeError:
             archives = {}  # Если файл пустой или поврежден, начинаем с пустого словаря
             
-        archives[str(user_id)] = archive_path
+        user_id = str(user_id)
+        print("add", user_id)
+        logging.info(f"Adding archive path for user {user_id}: {archive_path}")
+        archives[user_id] = archive_path
         
         with open(self.archive_paths_file, 'w', encoding='utf-8') as f:
             json.dump(archives, f, ensure_ascii=False, indent=4)
+        
+        # Проверяем, что путь сохранился
+        logging.info(f"Current archives: {archives}")
 
     def get_user_archive_path(self, user_id):
         try:
             with open(self.archive_paths_file, 'r', encoding='utf-8') as f:
                 archives = json.load(f)
-                return archives.get(str(user_id))
+                user_id = str(user_id)
+                path = archives.get(user_id)
+                logging.info(f"Getting archive path for user {user_id}. Available users: {list(archives.keys())}")
+                return path
         except (json.JSONDecodeError, FileNotFoundError):
             return None
 

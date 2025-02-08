@@ -46,7 +46,7 @@ def create_main_menu():
 # Обработчик нажатий на кнопки
 @bot.callback_query_handler(func=lambda call: True)
 def callback_handler(call):
-    user_id = str(call.from_user.id)
+    user_id = str(call.from_user.username)
     if call.data == "lets_repeat":
         bot.send_message(call.message.chat.id, "Введите название заметки для повторения:")
         bot.register_next_step_handler(call.message, handle_lets_repeat)
@@ -69,7 +69,8 @@ def callback_handler(call):
 @bot.message_handler(func=lambda message: True, commands=['get_notes_for_repeat'])
 def get_notes_for_repeat(message):
     try:
-        user_id = str(message.from_user.id)
+        user_id = str(message.from_user.username)
+        print("get", user_id)
         interval_checker = ic(user_id)
         notes = interval_checker.handle_get_notes_for_repeat(user_id)
         bot.send_message(message.chat.id, notes)
@@ -101,19 +102,19 @@ def set_image_folder(message):
         logging.error(f"Error setting image folder: {e}")
         bot.reply_to(message, f"An error occurred: {str(e)}")
 
-# Отправка запланированного сообщения
-def send_scheduled_message(user_id):
-    if CHAT_ID:
-        try:
-            interval_checker = ic(user_id)
-            notes = interval_checker.handle_get_notes_for_repeat("")
-            bot.send_message(CHAT_ID, notes)
-            logging.info("Scheduled message sent successfully.")
-        except Exception as e:
-            logging.error(f"Error sending scheduled message: {e}")
-            bot.send_message(CHAT_ID, f"An error occurred: {str(e)}")
-    else:
-        logging.warning("CHAT_ID is not set!")
+# # Отправка запланированного сообщения
+# def send_scheduled_message(user_id):
+#     if CHAT_ID:
+#         try:
+#             interval_checker = ic(user_id)
+#             notes = interval_checker.handle_get_notes_for_repeat("")
+#             bot.send_message(CHAT_ID, notes)
+#             logging.info("Scheduled message sent successfully.")
+#         except Exception as e:
+#             logging.error(f"Error sending scheduled message: {e}")
+#             bot.send_message(CHAT_ID, f"An error occurred: {str(e)}")
+#     else:
+#         logging.warning("CHAT_ID is not set!")
 
 # Запуск планировщика
 def run_scheduler():
@@ -130,7 +131,7 @@ def start_scheduler():
 @bot.message_handler(commands=['start'])
 def send_welcome(message):
     global CHAT_ID
-    user_id = str(message.from_user.id)
+    user_id = str(message.from_user.username)
     CHAT_ID = message.chat.id
     
     # Создаем локальные экземпляры
@@ -150,7 +151,8 @@ def send_welcome(message):
 def handle_lets_repeat(message):
     try:
         bot.send_message(message.chat.id, "Looking for note...")
-        repetitor_instance = repetitor(message.from_user.id)
+        user_id = message.from_user.username
+        repetitor_instance = repetitor(user_id)
         note_name = message.text
         note_content = repetitor_instance.handle_repeat_note(note_name)
         
@@ -170,8 +172,9 @@ def handle_lets_repeat(message):
 def ask_me(message):
     bot.send_message(message.chat.id, "Генерирую вопросы с помощью ИИ...")
     if Messages.last_repeated_note_name != "":
-        note_man = note_manager(message.from_user.id)
-        gpt_instance = gpt(message.from_user.id)
+        user_id = message.from_user.username
+        note_man = note_manager(user_id)
+        gpt_instance = gpt(user_id)
         questions = gpt_instance.generate_questions(note_man.read_note(Messages.last_repeated_note_name))
         bot.send_message(message.chat.id, questions)
     else:
@@ -181,7 +184,8 @@ def ask_me(message):
 @bot.message_handler(func=lambda message: True, commands=['get_reps'])
 def get_reps_count(message):
     try:
-        rep = repetitor(message.from_user.username)
+        user_id = message.from_user.username
+        rep = repetitor(user_id)
         reps_count = rep.handle_get_reps_count(message.text)
         bot.send_message(message.chat.id, reps_count)
     except Exception as e:
@@ -199,7 +203,7 @@ def handle_archive_upload(message):
         downloaded_file = bot.download_file(file_info.file_path)
 
         # Создаем директорию для архивов пользователя
-        user_id = str(message.from_user.id)
+        user_id = str(message.from_user.id)  # Используем числовой ID
         user_dir = Path("archives") / user_id
         user_dir.mkdir(parents=True, exist_ok=True)
         
@@ -248,8 +252,9 @@ def handle_archive_upload(message):
                     logging.error(f"Error extracting file {file_info.filename}: {e}")
                     continue
 
+        print("archive", user_id)
         # После успешной распаковки архива:
-        notes_table_manager = ntm(message.from_user.id)
+        notes_table_manager = ntm(user_id)
         notes_table_manager.update_notes_table()  # Обновляем таблицу заметок
 
         # Сохраняем путь к распакованному архиву пользователя

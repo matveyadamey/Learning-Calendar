@@ -24,16 +24,16 @@ class IntervalChecker:
         self.notes_df["time_diff"] = (today - creation_date).dt.days
         return self.notes_df
 
-    def filter_notes_for_repetition(self):
+    def filter_notes_for_repetition(self, user_id):
         days_for_repeats = Messages.days_for_repeats
         notes_df = self.calculate_time_diff()
 
         # Получаем путь к архиву пользователя
-        archive_path = self.user_archive_manager.get_user_archive_path(self.user_id)
-        logging.info(f"Archive path for user {self.user_id}: {archive_path}")
+        archive_path = self.user_archive_manager.get_user_archive_path(user_id)
+        logging.info(f"Archive path for user {user_id}: {archive_path}")
         
         if not archive_path:
-            logging.warning(f"No archive path found for user {self.user_id}")
+            logging.warning(f"No archive path found for user {user_id}")
             return []
 
         # Фильтруем заметки, которые есть в архиве пользователя
@@ -48,8 +48,8 @@ class IntervalChecker:
         logging.info(f"Notes for repetition: {notes_for_repetition}")
         return notes_for_repetition
 
-    def handle_get_notes_for_repeat(self):
-        notes_for_repetition = self.filter_notes_for_repetition()
+    def handle_get_notes_for_repeat(self, user_id):
+        notes_for_repetition = self.filter_notes_for_repetition(user_id)
         if not notes_for_repetition:
             return "Нет заметок для повторения или архив не загружен"
         return "\n".join(notes_for_repetition[:self.default_notes_count])

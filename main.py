@@ -71,7 +71,7 @@ def get_notes_for_repeat(message):
     try:
         user_id = str(message.from_user.id)
         interval_checker = ic(user_id)
-        notes = interval_checker.handle_get_notes_for_repeat()
+        notes = interval_checker.handle_get_notes_for_repeat(user_id)
         bot.send_message(message.chat.id, notes)
     except Exception as e:
         logging.error(f"Error getting notes for repeat: {e}")
@@ -131,7 +131,7 @@ def start_scheduler():
 def send_welcome(message):
     global CHAT_ID
     user_id = str(message.from_user.id)
-    CHAT_ID = user_id
+    CHAT_ID = message.chat.id
     
     # Создаем локальные экземпляры
     notes_table_manager = ntm(user_id)
@@ -141,8 +141,7 @@ def send_welcome(message):
     gpt_instance = gpt(user_id)
     
     bot.reply_to(message, Messages.start_message, reply_markup=create_main_menu())
-    
-    # Убираем schedule, так как он может вызывать дублирование
+  
     # schedule.every(24*60).minutes.do(lambda: send_scheduled_message(user_id))
     
     notes_table_manager.update_notes_table()
@@ -182,7 +181,7 @@ def ask_me(message):
 @bot.message_handler(func=lambda message: True, commands=['get_reps'])
 def get_reps_count(message):
     try:
-        rep = repetitor(message.from_user.id)
+        rep = repetitor(message.from_user.username)
         reps_count = rep.handle_get_reps_count(message.text)
         bot.send_message(message.chat.id, reps_count)
     except Exception as e:

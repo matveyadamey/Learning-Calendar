@@ -41,6 +41,11 @@ class IntervalChecker:
         logging.info(f"Found {len(notes_df)} notes in archive")
 
         notes_df["should_repeat"] = notes_df.time_diff.isin(days_for_repeats)
+
+        print(notes_df)
+        if (notes_df.reps>0).all():
+            return "Вы повторили все заметки"
+
         notes_for_repetition = notes_df[
             (notes_df.reps == 0) | (notes_df.should_repeat)
         ].note.apply(lambda x: x.replace(".md", "")).tolist()
@@ -52,4 +57,4 @@ class IntervalChecker:
         notes_for_repetition = self.filter_notes_for_repetition()
         if not notes_for_repetition:
             return "Нет заметок для повторения или архив не загружен"
-        return "\n".join(notes_for_repetition[:self.default_notes_count])
+        return "\n".join(notes_for_repetition)

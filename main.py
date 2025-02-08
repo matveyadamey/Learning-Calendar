@@ -37,10 +37,8 @@ def create_main_menu():
     btn1 = types.InlineKeyboardButton("Повторить материал", callback_data="lets_repeat")
     btn2 = types.InlineKeyboardButton("Получить вопросы", callback_data="ask_me")
     btn3 = types.InlineKeyboardButton("Посмотреть статистику повторений", callback_data="get_reps")
-    btn4 = types.InlineKeyboardButton("Настроить путь к Obsidian", callback_data="set_obsidian_path")
-    btn5 = types.InlineKeyboardButton("Настроить путь к изображениям", callback_data="set_image_folder")
     btn6 = types.InlineKeyboardButton("Загрузить архив", callback_data="upload_archive")
-    markup.add(btn0, btn1, btn2, btn3, btn4, btn5, btn6)
+    markup.add(btn0, btn1, btn2, btn3, btn6)
     return markup
 
 # Обработчик нажатий на кнопки
@@ -51,15 +49,28 @@ def callback_handler(call):
         bot.send_message(call.message.chat.id, "Введите название заметки для повторения:")
         bot.register_next_step_handler(call.message, handle_lets_repeat)
     elif call.data == "ask_me":
-        ask_me(call.message)
+        try:
+            if Messages.last_repeated_note_name == "":
+                bot.send_message(call.message.chat.id, "Эта функция доступна, если вы сегодня уже повторяли материал")
+                return
+
+            bot.send_message(call.message.chat.id, "Генерирую вопросы с помощью ИИ...")
+            
+            try:
+                note_man = note_manager(user_id)  # Используем ID из callback
+                note_content = note_man.read_note(Messages.last_repeated_note_name)
+            except ValueError as e:
+                bot.send_message(call.message.chat.id, "Пожалуйста, сначала загрузите архив с заметками")
+                return
+                
+            gpt_instance = gpt(user_id)  # Используем тот же ID
+            questions = gpt_instance.generate_questions(note_content)
+            bot.send_message(call.message.chat.id, questions)
+        except Exception as e:
+            logging.error(f"Error in ask_me: {e}")
+            bot.send_message(call.message.chat.id, f"Произошла ошибка: {str(e)}")
     elif call.data == "get_reps":
         get_reps_count(call.message)
-    elif call.data == "set_obsidian_path":
-        bot.send_message(call.message.chat.id, "Введите путь к папке Obsidian:")
-        bot.register_next_step_handler(call.message, set_obsidian_path)
-    elif call.data == "set_image_folder":
-        bot.send_message(call.message.chat.id, "Введите путь к папке с изображениями:")
-        bot.register_next_step_handler(call.message, set_image_folder)
     elif call.data == "get_notes_for_repeat":
         interval_checker = ic(user_id)
         notes = interval_checker.handle_get_notes_for_repeat()
@@ -67,55 +78,6 @@ def callback_handler(call):
     elif call.data == "upload_archive":
         bot.send_message(call.message.chat.id, "Пожалуйста, отправьте ZIP архив заметок")
         bot.register_next_step_handler(call.message, handle_archive_upload)
-
-@bot.message_handler(func=lambda message: True, commands=['get_notes_for_repeat'])
-def get_notes_for_repeat(message):
-    try:
-        user_id = str(message.from_user.id)
-        interval_checker = ic(user_id)
-        notes = interval_checker.handle_get_notes_for_repeat()
-        bot.send_message(message.chat.id, notes)
-    except Exception as e:
-        logging.error(f"Error getting notes for repeat: {e}")
-        bot.send_message(message.chat.id, f"Произошла ошибка: {str(e)}")
-
-# Обработчик установки пути к Obsidian
-def set_obsidian_path(message):
-    try:
-        obsidian_path = message.text
-        jcm.edit_field("obsidian_path", obsidian_path + "\\")
-        new_path_value = jcm.get_json_value("obsidian_path")
-        logging.info(f"Obsidian path updated to: {new_path_value}")
-        bot.reply_to(message, f"Obsidian path updated to: {new_path_value}")
-    except Exception as e:
-        logging.error(f"Error setting obsidian path: {e}")
-        bot.reply_to(message, f"An error occurred: {str(e)}")
-
-# Обработчик установки пути к папке с изображениями
-def set_image_folder(message):
-    try:
-        image_folder = message.text
-        jcm.edit_field("image_folder", image_folder)
-        new_path_value = jcm.get_json_value("image_folder")
-        logging.info(f"Image folder updated to: {new_path_value}")
-        bot.reply_to(message, f"Image folder updated to: {new_path_value}")
-    except Exception as e:
-        logging.error(f"Error setting image folder: {e}")
-        bot.reply_to(message, f"An error occurred: {str(e)}")
-
-# # Отправка запланированного сообщения
-# def send_scheduled_message(user_id):
-#     if CHAT_ID:
-#         try:
-#             interval_checker = ic(user_id)
-#             notes = interval_checker.handle_get_notes_for_repeat("")
-#             bot.send_message(CHAT_ID, notes)
-#             logging.info("Scheduled message sent successfully.")
-#         except Exception as e:
-#             logging.error(f"Error sending scheduled message: {e}")
-#             bot.send_message(CHAT_ID, f"An error occurred: {str(e)}")
-#     else:
-#         logging.warning("CHAT_ID is not set!")
 
 # Запуск планировщика
 def run_scheduler():
@@ -132,7 +94,7 @@ def start_scheduler():
 @bot.message_handler(commands=['start'])
 def send_welcome(message):
     global CHAT_ID
-    user_id = str(message.from_user.username)
+    user_id = str(message.from_user.id)
     CHAT_ID = message.chat.id
     
     # Создаем локальные экземпляры
@@ -152,7 +114,7 @@ def send_welcome(message):
 def handle_lets_repeat(message):
     try:
         bot.send_message(message.chat.id, "Looking for note...")
-        user_id = message.from_user.username
+        user_id = message.from_user.id
         repetitor_instance = repetitor(user_id)
         note_name = message.text
         note_content = repetitor_instance.handle_repeat_note(note_name)
@@ -168,24 +130,11 @@ def handle_lets_repeat(message):
         logging.error(f"Error repeating note: {e}")
         bot.send_message(message.chat.id, f"An error occurred: {str(e)}")
 
-# Обработчик генерации вопросов
-@bot.message_handler(func=lambda message: True, commands=["ask_me"])
-def ask_me(message):
-    bot.send_message(message.chat.id, "Генерирую вопросы с помощью ИИ...")
-    if Messages.last_repeated_note_name != "":
-        user_id = message.from_user.username
-        note_man = note_manager(user_id)
-        gpt_instance = gpt(user_id)
-        questions = gpt_instance.generate_questions(note_man.read_note(Messages.last_repeated_note_name))
-        bot.send_message(message.chat.id, questions)
-    else:
-        bot.send_message(message.chat.id, "Эта функция доступна, если вы сегодня уже повторяли материал")
-
 # Обработчик получения количества повторений
 @bot.message_handler(func=lambda message: True, commands=['get_reps'])
 def get_reps_count(message):
     try:
-        user_id = message.from_user.username
+        user_id = message.from_user.id
         rep = repetitor(user_id)
         reps_count = rep.handle_get_reps_count(message.text)
         bot.send_message(message.chat.id, reps_count)
@@ -196,6 +145,10 @@ def get_reps_count(message):
 @bot.message_handler(content_types=['document'])
 def handle_archive_upload(message):
     try:
+        if not message.document:
+            bot.reply_to(message, "Пожалуйста, отправьте ZIP архив")
+            return
+            
         if not message.document.file_name.endswith('.zip'):
             bot.reply_to(message, "Пожалуйста, отправьте файл в формате ZIP")
             return
@@ -204,7 +157,7 @@ def handle_archive_upload(message):
         downloaded_file = bot.download_file(file_info.file_path)
 
         # Создаем директорию для архивов пользователя
-        user_id = str(message.from_user.id)  # Используем числовой ID
+        user_id = str(message.from_user.id)
         user_dir = Path("archives") / user_id
         user_dir.mkdir(parents=True, exist_ok=True)
         

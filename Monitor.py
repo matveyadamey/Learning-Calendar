@@ -1,6 +1,7 @@
 import os
 import datetime
 from ConfigManager import ConfigManager as cm
+from UserArchiveManager import UserArchiveManager
 
 
 class Monitor:
@@ -10,8 +11,11 @@ class Monitor:
 
         Загружает путь к директории Obsidian из конфигурационного файла.
         """
-        config_manager = cm(user_id)
-        self.obsidian_path = config_manager.get_json_value("obsidian_path")
+        self.user_id = str(user_id)
+        self.user_archive_manager = UserArchiveManager()
+        self.obsidian_path = self.user_archive_manager.get_user_archive_path(self.user_id)
+        if not self.obsidian_path:
+            raise ValueError("Archive path not found for user")
 
     def scan_directory(self):
         """

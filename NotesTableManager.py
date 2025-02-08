@@ -2,6 +2,8 @@ import os
 import pandas as pd
 from Monitor import Monitor
 from ConfigManager import ConfigManager as cm
+from UserArchiveManager import UserArchiveManager
+import logging
 
 
 class NotesTableManager:
@@ -9,12 +11,12 @@ class NotesTableManager:
     
     def __init__(self, user_id):
         self.user_id = str(user_id)
-        self.monitor = Monitor(user_id)
-        self.config_manager = cm(user_id)
-        self.notes_dict = self.monitor.scan_directory()
+        self.user_archive_manager = UserArchiveManager()
         self.notes_table_path = f"notes_table_{self.user_id}.csv"
-        self.obsidian_path = self.config_manager.get_json_value("obsidian_path")
-        self.image_folder = self.config_manager.get_json_value("image_folder")
+        
+        # Создаем пустую таблицу при инициализации, если её нет
+        if not os.path.exists(self.notes_table_path):
+            self.create_empty_table()
     
     def save_notes_table(self):
         """Сохраняет таблицу заметок в CSV-файл для конкретного пользователя."""
@@ -31,26 +33,39 @@ class NotesTableManager:
         """Устанавливает таблицу заметок для конкретного пользователя."""
         NotesTableManager.notes_tables[self.user_id] = value
 
+    def create_empty_table(self):
+        """Создает пустую таблицу с нужными колонками"""
+        empty_df = pd.DataFrame(columns=['note', 'creation_date', 'reps'])
+        empty_df.to_csv(self.notes_table_path, index=False)
+        logging.info(f"Created empty notes table for user {self.user_id}")
+
     def create_notes_table(self):
-        """
-        Создаёт новую таблицу заметок на основе данных из self.notes_dict.
-
-        :return: DataFrame с данными заметок
-        """
-        notes = list(self.notes_dict.keys())
-        creation_dates = pd.to_datetime(list(self.notes_dict.values()),
-                                        format='%Y-%m-%d %H:%M:%S.%f')
-        reps_counts = [0] * len(notes)
-
-        notes_table = pd.DataFrame({
-            "note": notes,
-            "creation_date": creation_dates,
-            "reps": reps_counts
-        })
-        self.notes_table = notes_table
-        self.save_notes_table()
-        return notes_table
-    
+        """Создает новую таблицу заметок"""
+        try:
+            # Проверяем, есть ли архив у пользователя
+            archive_path = self.user_archive_manager.get_user_archive_path(self.user_id)
+            if archive_path:
+                self.monitor = Monitor(self.user_id)
+                files_info = self.monitor.scan_directory()
+                
+                # Создаем DataFrame с нужными колонками
+                data = {
+                    'note': [str(path) for path in files_info.keys()],
+                    'creation_date': list(files_info.values()),
+                    'reps': [0] * len(files_info)
+                }
+                notes_df = pd.DataFrame(data)
+            else:
+                # Если архива нет, создаем пустую таблицу
+                notes_df = pd.DataFrame(columns=['note', 'creation_date', 'reps'])
+            
+            # Сохраняем таблицу
+            notes_df.to_csv(self.notes_table_path, index=False)
+            logging.info(f"Created notes table for user {self.user_id}")
+            
+        except Exception as e:
+            logging.error(f"Error creating notes table: {e}")
+            raise
 
     def create_or_load_notes_table(self):
         """
@@ -68,41 +83,36 @@ class NotesTableManager:
             return self.create_notes_table()
 
     def update_notes_table(self):
-        """
-        Обновляет таблицу заметок,
-        добавляя новые заметки и обновляя существующие.
+        """Обновляет существующую таблицу заметок"""
+        try:
+            # Получаем текущую таблицу если она есть
+            if os.path.exists(self.notes_table_path):
+                current_df = pd.read_csv(self.notes_table_path)
+                current_reps = dict(zip(current_df['note'], current_df['reps']))
+            else:
+                current_reps = {}
 
-        :return: Обновлённый DataFrame с данными заметок
-        """
-        existing_table = self.create_or_load_notes_table()
-
-        new_notes = list(self.notes_dict.keys())
-        new_creation_dates = pd.to_datetime(list(self.notes_dict.values()),
-                                            format='%Y-%m-%d %H:%M:%S.%f')
-        new_reps_counts = [0] * len(new_notes)
-
-        new_table = pd.DataFrame({
-            "note": new_notes,
-            "creation_date": new_creation_dates,
-            "reps": new_reps_counts
-        })
-
-        updated_table = pd.concat([existing_table, new_table]).\
-            drop_duplicates(subset="note", keep="first")
-
-        self.notes_table = updated_table
-
-        self.save_notes_table()
-
-        return updated_table
+            # Получаем новый список файлов
+            files_info = self.monitor.scan_directory()
+            
+            # Преобразуем пути в строки
+            data = {
+                'note': [str(path) for path in files_info.keys()],
+                'creation_date': list(files_info.values()),
+                'reps': [current_reps.get(str(note), 0) for note in files_info.keys()]
+            }
+            new_df = pd.DataFrame(data)
+            
+            # Сохраняем обновленную таблицу
+            new_df.to_csv(self.notes_table_path, index=False)
+            logging.info(f"Updated notes table for user {self.user_id}")
+            
+        except Exception as e:
+            logging.error(f"Error updating notes table: {e}")
+            raise
 
     def get_notes_table(self):
-        """
-        Получает таблицу заметок.
-
-        Если файл таблицы существует, загружает его.
-        В противном случае создаёт новую таблицу.
-
-        :return: DataFrame с данными заметок
-        """
-        return self.create_or_load_notes_table()
+        """Возвращает таблицу заметок"""
+        if not os.path.exists(self.notes_table_path):
+            self.create_notes_table()
+        return pd.read_csv(self.notes_table_path)

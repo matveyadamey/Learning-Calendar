@@ -41,40 +41,55 @@ def create_main_menu():
     markup.add(btn0, btn1, btn2, btn3, btn6)
     return markup
 
+def split_and_send_message(chat_id, text, max_length=4096):
+    """
+    Разделяет длинное сообщение на части и отправляет их последовательно
+    
+    :param chat_id: ID чата для отправки
+    :param text: Текст для отправки
+    :param max_length: Максимальная длина одного сообщения (для Telegram это 4096 символов)
+    """
+    # Если текст короче максимальной длины, отправляем как есть
+    if len(text) <= max_length:
+        bot.send_message(chat_id, text)
+        return
+
+    # Разделяем текст на части
+    parts = []
+    for i in range(0, len(text), max_length):
+        # Находим последний перенос строки в пределах максимальной длины
+        part = text[i:i + max_length]
+        if i + max_length < len(text):
+            # Ищем последний перенос строки
+            last_newline = part.rfind('\n')
+            if last_newline != -1:
+                # Если нашли перенос строки, обрезаем по нему
+                part = part[:last_newline]
+                i = i + last_newline  # Корректируем позицию для следующей части
+        parts.append(part)
+
+    # Отправляем каждую часть
+    for index, part in enumerate(parts):
+        message_text = f"Часть {index + 1}/{len(parts)}\n\n{part}" if len(parts) > 1 else part
+        bot.send_message(chat_id, message_text)
+
 # Обработчик нажатий на кнопки
 @bot.callback_query_handler(func=lambda call: True)
 def callback_handler(call):
-    user_id = str(call.from_user.id)  # ID пользователя, который нажал кнопку
+    user_id = str(call.from_user.id)
     if call.data == "lets_repeat":
         bot.send_message(call.message.chat.id, "Введите название заметки для повторения:")
         bot.register_next_step_handler(call.message, handle_lets_repeat)
     elif call.data == "ask_me":
-        try:
-            if Messages.last_repeated_note_name == "":
-                bot.send_message(call.message.chat.id, "Эта функция доступна, если вы сегодня уже повторяли материал")
-                return
-
-            bot.send_message(call.message.chat.id, "Генерирую вопросы с помощью ИИ...")
-            
-            try:
-                note_man = note_manager(user_id)  # Используем ID из callback
-                note_content = note_man.read_note(Messages.last_repeated_note_name)
-            except ValueError as e:
-                bot.send_message(call.message.chat.id, "Пожалуйста, сначала загрузите архив с заметками")
-                return
-                
-            gpt_instance = gpt(user_id)  # Используем тот же ID
-            questions = gpt_instance.generate_questions(note_content)
-            bot.send_message(call.message.chat.id, questions)
-        except Exception as e:
-            logging.error(f"Error in ask_me: {e}")
-            bot.send_message(call.message.chat.id, f"Произошла ошибка: {str(e)}")
+        bot.send_message(call.message.chat.id, "Введите название заметки для генерации вопросов:")
+        bot.register_next_step_handler(call.message, handle_ask_me)
     elif call.data == "get_reps":
-        get_reps_count(call.message)
+        bot.send_message(call.message.chat.id, "Введите название заметки для подсчета повторений:")
+        bot.register_next_step_handler(call.message, handle_get_reps_count)
     elif call.data == "get_notes_for_repeat":
         interval_checker = ic(user_id)
         notes = interval_checker.handle_get_notes_for_repeat()
-        bot.send_message(call.message.chat.id, notes)
+        split_and_send_message(call.message.chat.id, notes)
     elif call.data == "upload_archive":
         bot.send_message(call.message.chat.id, "Пожалуйста, отправьте ZIP архив заметок")
         bot.register_next_step_handler(call.message, handle_archive_upload)
@@ -93,22 +108,29 @@ def start_scheduler():
 # Обработчик команды /start
 @bot.message_handler(commands=['start'])
 def send_welcome(message):
-    global CHAT_ID
-    user_id = str(message.from_user.id)
-    CHAT_ID = message.chat.id
-    
-    # Создаем локальные экземпляры
-    notes_table_manager = ntm(user_id)
-    interval_checker = ic(user_id)
-    note_manager_instance = note_manager(user_id)
-    repetitor_instance = repetitor(user_id)
-    gpt_instance = gpt(user_id)
-    
-    bot.reply_to(message, Messages.start_message, reply_markup=create_main_menu())
-  
-    # schedule.every(24*60).minutes.do(lambda: send_scheduled_message(user_id))
-    
-    notes_table_manager.update_notes_table()
+    try:
+        global CHAT_ID
+        user_id = str(message.from_user.id)
+        CHAT_ID = message.chat.id
+        
+        # Создаем локальные экземпляры
+        notes_table_manager = ntm(user_id)
+        
+        # Создаем необходимые директории и файлы для нового пользователя
+        user_dir = Path("archives") / user_id
+        user_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Создаем таблицу заметок для пользователя
+        notes_table_manager.create_notes_table()
+        
+        # Отправляем приветственное сообщение
+        bot.reply_to(message, Messages.start_message, reply_markup=create_main_menu())
+        
+        logging.info(f"New user registered: {user_id}")
+        
+    except Exception as e:
+        logging.error(f"Error in send_welcome: {e}")
+        bot.reply_to(message, f"Произошла ошибка при регистрации: {str(e)}")
 
 # Обработчик повторения заметки
 def handle_lets_repeat(message):
@@ -120,31 +142,35 @@ def handle_lets_repeat(message):
         note_content = repetitor_instance.handle_repeat_note(note_name)
         
         if isinstance(note_content, list):
-            bot.send_media_group(message.chat.id, note_content)
+            # Если контент разбит на части, отправляем каждую часть отдельно
+            for i, part in enumerate(note_content, 1):
+                message_text = f"Часть {i}/{len(note_content)}\n\n{part}"
+                bot.send_message(message.chat.id, message_text)
         else:
             bot.send_message(message.chat.id, note_content)
         
-        Messages.last_repeated_note_name = note_name
-        bot.send_message(message.chat.id, '+1 rep')
+        bot.send_message(message.chat.id, '+50 звезда')
     except Exception as e:
         logging.error(f"Error repeating note: {e}")
         bot.send_message(message.chat.id, f"An error occurred: {str(e)}")
 
-# Обработчик получения количества повторений
-@bot.message_handler(func=lambda message: True, commands=['get_reps'])
-def get_reps_count(message):
+# Обновляем функцию get_reps_count
+def handle_get_reps_count(message):
     try:
-        user_id = message.from_user.id
+        user_id = str(message.from_user.id)
+        note_name = message.text
         rep = repetitor(user_id)
-        reps_count = rep.handle_get_reps_count(message.text)
+        reps_count = rep.handle_get_reps_count(note_name)
         bot.send_message(message.chat.id, reps_count)
     except Exception as e:
         logging.error(f"Error getting reps count: {e}")
-        bot.send_message(message.chat.id, f"An error occurred: {str(e)}")
+        bot.send_message(message.chat.id, f"Произошла ошибка: {str(e)}")
 
 @bot.message_handler(content_types=['document'])
 def handle_archive_upload(message):
+    print("document has sent")
     try:
+        print("bobr")
         if not message.document:
             bot.reply_to(message, "Пожалуйста, отправьте ZIP архив")
             return
@@ -159,13 +185,15 @@ def handle_archive_upload(message):
         # Создаем директорию для архивов пользователя
         user_id = str(message.from_user.id)
         user_dir = Path("archives") / user_id
-        user_dir.mkdir(parents=True, exist_ok=True)
         
         # Очищаем существующую директорию extracted, если она существует
         extract_path = user_dir / "extracted"
-        if extract_path.exists():
+        print("path", user_dir)
+        if user_dir.exists():
             import shutil
-            shutil.rmtree(extract_path)
+            shutil.rmtree(user_dir)
+            print("removed")
+            
         extract_path.mkdir(parents=True, exist_ok=True)
         
         archive_path = user_dir / message.document.file_name
@@ -223,6 +251,28 @@ def handle_archive_upload(message):
     except Exception as e:
         logging.error(f"Error handling archive: {e}")
         bot.reply_to(message, f"Произошла ошибка при обработке архива: {str(e)}")
+
+# Добавляем новый обработчик для ask_me
+def handle_ask_me(message):
+    try:
+        user_id = str(message.from_user.id)
+        note_name = message.text
+        
+        bot.send_message(message.chat.id, "Генерирую вопросы с помощью ИИ...")
+        
+        try:
+            note_man = note_manager(user_id)
+            note_content = note_man.read_note(note_name)
+        except ValueError as e:
+            bot.send_message(message.chat.id, "Пожалуйста, сначала загрузите архив с заметками")
+            return
+            
+        gpt_instance = gpt(user_id)
+        questions = gpt_instance.generate_questions(note_content)
+        split_and_send_message(message.chat.id, questions)
+    except Exception as e:
+        logging.error(f"Error in ask_me: {e}")
+        bot.send_message(message.chat.id, f"Произошла ошибка: {str(e)}")
 
 if __name__ == "__main__":
     logging.info("Starting bot...")

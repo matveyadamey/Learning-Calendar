@@ -41,18 +41,41 @@ class Repetitor:
 
             # Читаем содержимое заметки
             note_content = self.jnm.read_note(note_name)
+            
+            
+            # Разбиваем содержимое на части, если оно слишком длинное
+            if len(note_content) > 500:
+                parts = []
+                for i in range(0, len(note_content), 500):
+                    part = note_content[i:i + 500]
+                    if i + 500 < len(note_content):
+                        last_newline = part.rfind('\n')
+                        if last_newline != -1:
+                            part = part[:last_newline]
+                            i = i + last_newline
+                    parts.append(part)
+                return parts
             return note_content
 
         except Exception as e:
             logging.error(f"Error in handle_repeat_note: {e}")
             raise
 
-    def handle_get_reps_count(self, message_text):
-        if len(message_text.split(' ')) > 1:
-            note_name = " ".join(message_text.split(' ')[1:])
-
-            reps_count = self.get_reps_count(note_name)
-            reps_msg = f"You have repeated {note_name} for {reps_count} times"
-            return reps_msg
-        else:
-            return "Введите название заметки после команды /get_reps"
+    def handle_get_reps_count(self, note_name):
+        try:
+            if self.notes_df.empty or 'reps' not in self.notes_df.columns:
+                return "Нет данных о повторениях или архив не загружен"
+            
+            # Добавляем .md к имени файла для поиска в таблице
+            note_with_ext = f"{note_name}.md"
+            
+            # Проверяем, есть ли заметка в таблице
+            if note_with_ext not in self.notes_df['note'].values:
+                return f"Заметка '{note_name}' не найдена"
+            
+            # Получаем количество повторений для конкретной заметки
+            note_reps = self.notes_df[self.notes_df['note'] == note_with_ext]['reps'].iloc[0]
+            return f"Количество повторений заметки '{note_name}': {note_reps}"
+        except Exception as e:
+            logging.error(f"Error in handle_get_reps_count: {e}")
+            raise

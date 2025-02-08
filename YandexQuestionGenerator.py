@@ -9,15 +9,14 @@ class YandexQuestionGenerator:
     Класс для генерации вопросов по заметке с использованием YandexGPT API.
     """
 
-    def __init__(self, folder_id: str = None, api_key: str = None, model: str = 'yandexgpt-lite',
-                 temperature: float = 0.3, max_tokens: int = 4000):
-        jcm = cm()
+    def __init__(self, user_id=None):
+        self.user_id = str(user_id) if user_id else None
+        jcm = cm(self.user_id)
         self.folder_id = jcm.get_json_value("yandex_folder_id")
         self.api_key = jcm.get_json_value("yandex_api_key")
-        self.model = model
-        self.temperature = temperature
-        self.max_tokens = max_tokens
-
+        self.model = 'yandexgpt-lite'
+        self.temperature = 0.3
+        self.max_tokens = 4000
 
         self.base_url = "https://llm.api.cloud.yandex.net/foundationModels/v1/completionAsync"
         self.operation_url = "https://llm.api.cloud.yandex.net:443/operations/{}"

@@ -2,8 +2,9 @@ import json
 
 
 class ConfigManager:
-    def __init__(self):
+    def __init__(self, user_id=None):
         self.file_path = "config.json"
+        self.user_id = str(user_id) if user_id else None
 
     def load_data(self):
         try:
@@ -16,10 +17,17 @@ class ConfigManager:
             return {}
 
     def get_json_value(self, name):
-
         with open(self.file_path, 'r', encoding='utf-8') as j:
-            json_value = json.loads(j.read())[name]
-        return json_value
+            data = json.loads(j.read())
+            
+            # Если указан user_id, ищем в пользовательских настройках
+            if self.user_id and 'users' in data:
+                if self.user_id in data['users']:
+                    return data['users'][self.user_id].get(name)
+            
+            # Если не нашли пользовательские настройки или user_id не указан,
+            # возвращаем глобальные настройки
+            return data.get(name)
 
     def save_data(self, data):
         try:

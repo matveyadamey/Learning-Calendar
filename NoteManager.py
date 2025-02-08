@@ -4,13 +4,16 @@ from NotesTableManager import NotesTableManager as ntm
 import re
 import telebot
 from pathlib import Path
+import logging
+from UserArchiveManager import UserArchiveManager
 
 class NoteManager:
-    def __init__(self):
-        self.jcm = cm()
-        self.obsidian_path = self.jcm.get_json_value("obsidian_path")
+    def __init__(self, user_id):
+        self.user_id = str(user_id)
+        self.jcm = cm(self.user_id)
+        self.user_archive_manager = UserArchiveManager()
         self.image_folder = self.jcm.get_json_value("image_folder")
-        self.jntm = ntm()
+        self.jntm = ntm(self.user_id)
 
     def flip_slashes(self, path):
         """
@@ -32,19 +35,25 @@ class NoteManager:
             return path
 
     def read_note(self, note_path):
-        path = os.path.join(self.obsidian_path, note_path + '.md')
-        p = Path(path)
-        # Возвращаем абсолютный нормализованный путь
-        path = self.flip_slashes(str(p.resolve()))
+        # Получаем путь к архиву пользователя
+        archive_path = self.user_archive_manager.get_user_archive_path(self.user_id)
+        if not archive_path:
+            raise ValueError("User archive not found")
 
-        print(path)
+        # Формируем полный путь к заметке в архиве пользователя
+        path = Path(archive_path) / f"{note_path}.md"
+        
+        # Возвращаем абсолютный нормализованный путь
+        path = self.flip_slashes(str(path.resolve()))
+
+        logging.info(f"Trying to read note from path: {path}")
 
         if os.path.exists(path):
             with open(path, 'r', encoding='UTF-8') as note:
                 note_content = note.read()
                 return note_content
         else:
-            raise ValueError("Note not found")
+            raise ValueError(f"Note not found at path: {path}")
 
     def get_note_property(self, note_name, property_name):
         notes_table = self.jntm.notes_table

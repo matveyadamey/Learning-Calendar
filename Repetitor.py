@@ -3,9 +3,10 @@ from NotesTableManager import NotesTableManager as ntm
 
 
 class Repetitor:
-    def __init__(self):
-        self.note_man = note_manager()
-        self.jntm = ntm()
+    def __init__(self, user_id):
+        self.user_id = str(user_id)
+        self.note_man = note_manager(self.user_id)
+        self.jntm = ntm(self.user_id)
 
     def get_reps_count(self, note_name):
         print("Возвращаю количество повторений...")

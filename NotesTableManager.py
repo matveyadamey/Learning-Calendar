@@ -5,29 +5,31 @@ from ConfigManager import ConfigManager as cm
 
 
 class NotesTableManager:
-    notes_table = pd.DataFrame()
-
-    def __init__(self):
-        """
-        Инициализирует класс NotesTableManager.
-
-        Загружает путь к таблице заметок и
-        сканирует директорию для получения списка заметок.
-        """
-        self.monitor = Monitor()
-        config_manager = cm()
+    notes_tables = {}  # Словарь для хранения таблиц разных пользователей
+    
+    def __init__(self, user_id):
+        self.user_id = str(user_id)
+        self.monitor = Monitor(user_id)
+        self.config_manager = cm(user_id)
         self.notes_dict = self.monitor.scan_directory()
-        self.notes_table_path = "notes_table.csv"
-        self.obsidian_path = config_manager.get_json_value("obsidian_path")
-        self.image_folder = config_manager.get_json_value("image_folder")
+        self.notes_table_path = f"notes_table_{self.user_id}.csv"
+        self.obsidian_path = self.config_manager.get_json_value("obsidian_path")
+        self.image_folder = self.config_manager.get_json_value("image_folder")
     
     def save_notes_table(self):
-        """
-        Сохраняет таблицу заметок в CSV-файл.
-
-        :param notes_table: DataFrame с данными заметок
-        """
-        NotesTableManager.notes_table.to_csv(self.notes_table_path, index=True)
+        """Сохраняет таблицу заметок в CSV-файл для конкретного пользователя."""
+        if self.user_id in NotesTableManager.notes_tables:
+            NotesTableManager.notes_tables[self.user_id].to_csv(self.notes_table_path, index=True)
+    
+    @property
+    def notes_table(self):
+        """Получает таблицу заметок для конкретного пользователя."""
+        return NotesTableManager.notes_tables.get(self.user_id, pd.DataFrame())
+    
+    @notes_table.setter
+    def notes_table(self, value):
+        """Устанавливает таблицу заметок для конкретного пользователя."""
+        NotesTableManager.notes_tables[self.user_id] = value
 
     def create_notes_table(self):
         """
@@ -45,7 +47,7 @@ class NotesTableManager:
             "creation_date": creation_dates,
             "reps": reps_counts
         })
-        NotesTableManager.notes_table = notes_table
+        self.notes_table = notes_table
         self.save_notes_table()
         return notes_table
     
@@ -88,7 +90,7 @@ class NotesTableManager:
         updated_table = pd.concat([existing_table, new_table]).\
             drop_duplicates(subset="note", keep="first")
 
-        NotesTableManager.notes_table = updated_table
+        self.notes_table = updated_table
 
         self.save_notes_table()
 

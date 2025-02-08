@@ -4,13 +4,13 @@ from ConfigManager import ConfigManager as cm
 
 
 class Monitor:
-    def __init__(self):
+    def __init__(self, user_id):
         """
         Инициализирует класс Monitor.
 
         Загружает путь к директории Obsidian из конфигурационного файла.
         """
-        config_manager = cm()
+        config_manager = cm(user_id)
         self.obsidian_path = config_manager.get_json_value("obsidian_path")
 
     def scan_directory(self):

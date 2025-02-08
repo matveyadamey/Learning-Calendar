@@ -46,7 +46,7 @@ def create_main_menu():
 # Обработчик нажатий на кнопки
 @bot.callback_query_handler(func=lambda call: True)
 def callback_handler(call):
-    user_id = str(call.from_user.username)
+    user_id = str(call.from_user.id)  # ID пользователя, который нажал кнопку
     if call.data == "lets_repeat":
         bot.send_message(call.message.chat.id, "Введите название заметки для повторения:")
         bot.register_next_step_handler(call.message, handle_lets_repeat)
@@ -61,7 +61,9 @@ def callback_handler(call):
         bot.send_message(call.message.chat.id, "Введите путь к папке с изображениями:")
         bot.register_next_step_handler(call.message, set_image_folder)
     elif call.data == "get_notes_for_repeat":
-        get_notes_for_repeat(call.message)
+        interval_checker = ic(user_id)
+        notes = interval_checker.handle_get_notes_for_repeat()
+        bot.send_message(call.message.chat.id, notes)
     elif call.data == "upload_archive":
         bot.send_message(call.message.chat.id, "Пожалуйста, отправьте ZIP архив заметок")
         bot.register_next_step_handler(call.message, handle_archive_upload)
@@ -69,10 +71,9 @@ def callback_handler(call):
 @bot.message_handler(func=lambda message: True, commands=['get_notes_for_repeat'])
 def get_notes_for_repeat(message):
     try:
-        user_id = str(message.from_user.username)
-        print("get", user_id)
+        user_id = str(message.from_user.id)
         interval_checker = ic(user_id)
-        notes = interval_checker.handle_get_notes_for_repeat(user_id)
+        notes = interval_checker.handle_get_notes_for_repeat()
         bot.send_message(message.chat.id, notes)
     except Exception as e:
         logging.error(f"Error getting notes for repeat: {e}")

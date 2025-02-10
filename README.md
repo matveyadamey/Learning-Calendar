@@ -1,14 +1,19 @@
-# How to install
-1) Download the archieve. 
-2) Run pip install -r requirements.txt
-3) Make new telegram bot with BotFather (@BotFather) and paste the token to config file
-4) Change the obsidian path to yours
-5) Profit!
+#Learning Calendar
+## What is it?
+is an app that helps users study effectively using the spaced repetition system. It syncs with your notes folder on your device and uses artificial intelligence to generate questions and tasks on the topics being studied. After completing the tasks, the app analyzes the user's answers and provides feedback on the quality of the material assimilation.
 
-# How to run
-python main.py
+▎Main Features
 
-# Commands
-1) /get_notes_for repeat (notes count) - print a few notes for repeat. If you haven't specified count, default is 10 and you can change it in config
-2) /lets_repeat note_name - print content of note and increase repeates count
-3) /get_reps note_name - print how many times you have repeated this note
+• Sync with notes folder: Automatically downloads and updates notes from the specified folder on your device.
+
+• Spaced repetition: Notifies the user to review the studied material according to the spaced repetition system.
+
+• Question generation: Uses artificial intelligence to generate questions and tasks on the current topics.
+
+• Response analysis: Evaluates the quality of the user's answers and provides detailed feedback, which helps improve the assimilation of the material.
+
+Now the are no app, but all features are available in tg-bot.
+
+bobr2 branch is the server version of ot it, main is locally-running.
+
+Here you can see the prototype: https://www.figma.com/proto/DP5BP0EEX2ixyal02JWH7M
